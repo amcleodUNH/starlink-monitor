@@ -1482,6 +1482,19 @@ class Dashboard:
         # Row 2 — throughput history chart
         hist_frame = make_card(main, "Throughput History  (last 20 min)")
         hist_frame.grid(row=2, column=0, columnspan=4, sticky="nsew", padx=4, pady=4)
+
+        # 20-minute mean download/upload — copyable labels overlaid top-right.
+        self._avg_dl_var = tk.StringVar(value="↓ --")
+        self._avg_ul_var = tk.StringVar(value="↑ -- Mbps")
+        avg_hdr = tk.Frame(hist_frame, bg=CARD)
+        avg_hdr.place(relx=1.0, x=-10, y=4, anchor="ne")
+        tk.Label(avg_hdr, text="20-min avg:", bg=CARD, fg=DIM,
+                 font=F_SMALL).pack(side="left")
+        copyable_label(avg_hdr, self._avg_dl_var, fg=BLUE, font=F_VAL,
+                       width=8).pack(side="left", padx=(4, 4))
+        copyable_label(avg_hdr, self._avg_ul_var, fg=PURPLE, font=F_VAL,
+                       width=11).pack(side="left")
+
         self.hist_canvas = tk.Canvas(hist_frame, bg=CARD, highlightthickness=0, height=100)
         self.hist_canvas.pack(fill="both", expand=True, padx=6, pady=4)
         self._dl_history: deque = deque(maxlen=HIST_POINTS)
@@ -1914,18 +1927,14 @@ class Dashboard:
         c.create_text(lx + 104, 11, text="Upload", fill=TEXT,
                       font=("Consolas", 9), anchor="w")
 
-        # Mean over the displayed window (right-aligned, color-matched to the lines)
+        # Mean over the displayed window -> copyable labels in the panel header
         if self._dl_history or self._ul_history:
             dl_mean = (sum(self._dl_history) / len(self._dl_history)
                        if self._dl_history else 0.0)
             ul_mean = (sum(self._ul_history) / len(self._ul_history)
                        if self._ul_history else 0.0)
-            c.create_text(w - 6, 11, text=f"↑ {ul_mean:.1f} Mbps", fill=PURPLE,
-                          font=("Consolas", 9, "bold"), anchor="e")
-            c.create_text(w - 92, 11, text=f"↓ {dl_mean:.1f}", fill=BLUE,
-                          font=("Consolas", 9, "bold"), anchor="e")
-            c.create_text(w - 150, 11, text="avg:", fill=DIM,
-                          font=("Consolas", 9), anchor="e")
+            self._avg_dl_var.set(f"↓ {dl_mean:.1f}")
+            self._avg_ul_var.set(f"↑ {ul_mean:.1f} Mbps")
 
 
 # ---------------------------------------------------------------------------
