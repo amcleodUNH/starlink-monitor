@@ -34,7 +34,9 @@ optional "likely satellite" estimate:
 - Sky-position compass — boresight azimuth/elevation on a hemisphere
 - Dish-tilt gauge — tilt from vertical, derived from the onboard orientation quaternion
 - Per-sector signal quality — 10-segment radial ring chart
-- Ready-states indicator — CADY / SCP / L1L2 / XPHY / AAP
+- Ready-states indicator — each dish subsystem bring-up flag (CADY, SCP, L1/L2,
+  XPHY, AAP) shown with a status dot, a plain-language description, and a
+  Ready/Down label (all green = fully operational)
 - Dish info — hardware/firmware version, uptime, cumulative session data usage
 - Extended info — country, GPS validity/accuracy, secondary beam, IDs, dish clock
 - **Likely satellite estimate (optional)** — a checkbox under the sky compass
