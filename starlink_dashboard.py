@@ -1413,7 +1413,7 @@ class Dashboard:
         self._obstr_last_event_time = None
         self._last_gps = {}   # latest GPS fix: lat, lon, sats, quality
         self._logger = DataLogger()
-        # Optional "Likely satellite" TLE matcher (detail window, off by default)
+        # "Likely satellite" TLE matcher (detail window, on by default)
         self._sat_matcher = SatelliteMatcher()
         self._sat_on = False           # plain mirror of the tk checkbox (thread-safe read)
         self._sat_loaded = False
@@ -1433,6 +1433,10 @@ class Dashboard:
         saved_port = load_gps_port()
         self.location_panel._port_var.set(saved_port)
         self._reconnect_gps(saved_port)
+        # Satellite estimate is on by default — kick off the TLE load now
+        # (the checkbox command only fires on user clicks, not on initial value)
+        if self._sat_enabled.get():
+            self._on_toggle_sat()
 
     # ------------------------------------------------------------------
     # Optional "Likely satellite" TLE estimate
@@ -1617,8 +1621,8 @@ class Dashboard:
         self.pointing_canvas = PointingCanvas(sky_frame)
         self.pointing_canvas.pack(expand=True, pady=4)
 
-        # Optional "Likely satellite" TLE estimate (off by default)
-        self._sat_enabled = tk.BooleanVar(value=False)
+        # "Likely satellite" TLE estimate (on by default; kicked off in __init__)
+        self._sat_enabled = tk.BooleanVar(value=True)
         tk.Checkbutton(
             sky_frame, text="Estimate satellite (TLE)",
             variable=self._sat_enabled, command=self._on_toggle_sat,

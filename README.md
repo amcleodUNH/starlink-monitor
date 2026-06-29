@@ -39,13 +39,14 @@ optional "likely satellite" estimate:
   Ready/Down label (all green = fully operational)
 - Dish info — hardware/firmware version, uptime, cumulative session data usage
 - Extended info — country, GPS validity/accuracy, secondary beam, IDs, dish clock
-- **Likely satellite estimate (optional)** — a checkbox under the sky compass
-  downloads the public Starlink TLE catalogue from CelesTrak, propagates every
-  satellite with SGP4, and reports whichever currently sits closest to the dish's
-  reported boresight, with the angular offset (Δ). Requires a dish GPS fix (or
-  manual coordinates) plus the optional `sgp4` + `numpy` packages. It is a
-  best-guess — beam handoffs occur every ~15 s and several satellites can share a
-  look-angle, and the dish never reveals the real satellite ID.
+- **Likely satellite estimate** — *on by default* (toggle via the checkbox under
+  the sky compass). Downloads the public Starlink TLE catalogue from CelesTrak,
+  propagates every satellite with SGP4, and reports whichever currently sits
+  closest to the dish's reported boresight, with the angular offset (Δ). Needs a
+  dish GPS fix (or manual coordinates) plus the `sgp4` + `numpy` packages; if
+  those are missing it just shows a hint and the rest of the app is unaffected.
+  It is a best-guess — beam handoffs occur every ~15 s and several satellites can
+  share a look-angle, and the dish never reveals the real satellite ID.
 
 **Data logging**
 - Every poll is appended to a CSV in `data/`, one file per UTC day
