@@ -1098,6 +1098,21 @@ class SkyMapPanel:
         return 6371.0 * 2 * math.asin(math.sqrt(a))
 
     def _redraw(self):
+        # Contain any drawing error: a bad frame shows a note and is logged, but
+        # never propagates to take the app down.
+        try:
+            self._redraw_impl()
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            try:
+                self.canvas.delete("all")
+                self.canvas.create_text(8, 8, anchor="nw", fill=RED, font=F_TINY,
+                                         text="sky map: draw error (logged)")
+            except Exception:
+                pass
+
+    def _redraw_impl(self):
         c = self.canvas
         c.delete("all")
         w, h = c.winfo_width(), c.winfo_height()
@@ -1124,7 +1139,13 @@ class SkyMapPanel:
         def proj(lat, lon):
             north = (lat - dish_lat) * 111.32
             east = (lon - dish_lon) * 111.32 * coslat
-            return cx + east * ppk, cy - north * ppk
+            x = cx + east * ppk
+            y = cy - north * ppk
+            # Guard against non-finite or absurd coordinates, which can throw a
+            # TclError deep in the canvas; off-canvas points clip harmlessly.
+            if not (math.isfinite(x) and math.isfinite(y)):
+                return -1.0e4, -1.0e4
+            return max(-3.2e4, min(3.2e4, x)), max(-3.2e4, min(3.2e4, y))
 
         # visible half-extents (km) -> view bbox for border/graticule culling
         half_w_km = self.VIEW_HALF_KM
@@ -1939,8 +1960,13 @@ class Dashboard:
                 self.root.after(0, self.status_bar.update, False,
                                 f"Error ({self._error_count}): {msg}")
             # Sky map runs on TLE + GPS, independent of the dish gRPC link, so it
-            # keeps moving even while the dish is briefly unreachable.
-            self._update_sky_map()
+            # keeps moving even while the dish is briefly unreachable. Guarded in its
+            # own try so a bad frame here can never kill the poll thread.
+            try:
+                self._update_sky_map()
+            except Exception as e:
+                self.root.after(0, self.status_bar.update, True,
+                                f"sky map skipped: {str(e)[:60]}")
             time.sleep(POLL_INTERVAL)
 
     def _seed_history(self, h):
@@ -2218,6 +2244,36 @@ class Dashboard:
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _setup_crash_logging(root):
+    """Make the dashboard survivable and self-diagnosing: log any UI-callback
+    exception (and any hard crash) to data/crash.log and keep running, rather
+    than letting a single bad frame take the whole app down."""
+    import faulthandler, traceback
+    log_path = Path(__file__).parent / "data" / "crash.log"
+    try:
+        log_path.parent.mkdir(exist_ok=True)
+        fh = open(log_path, "a", buffering=1, encoding="utf-8")
+    except Exception:
+        return
+    fh.write(f"\n=== session start {datetime.datetime.now().isoformat()} ===\n")
+    try:
+        faulthandler.enable(file=fh)          # C-level trace on segfault/abort
+    except Exception:
+        pass
+
+    def _report(exc, val, tb):
+        fh.write(f"\n--- UI callback exception {datetime.datetime.now().isoformat()} ---\n")
+        traceback.print_exception(exc, val, tb, file=fh)
+        fh.flush()
+        try:
+            traceback.print_exception(exc, val, tb)   # also to stderr if present
+        except Exception:
+            pass
+    # tkinter calls this for exceptions raised inside callbacks; default behaviour
+    # already continues, but we route it to a persistent log we can inspect later.
+    root.report_callback_exception = _report
+
+
 def main():
     print("Compiling Starlink protobuf definitions...")
     try:
@@ -2228,6 +2284,7 @@ def main():
         sys.exit(1)
 
     root = tk.Tk()
+    _setup_crash_logging(root)
 
     # Dark title bar on Windows — must run after mainloop starts so the HWND exists
     def _apply_dark_titlebar():
